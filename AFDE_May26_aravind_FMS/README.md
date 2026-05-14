@@ -177,8 +177,3 @@ AFDE_May26_Aravind_FMS
 ```
 
 ---
-
-## Author
-
-**Aravind G** — Prodapt Solutions  
-Capstone Project — Phase 1: Feedback Management System
