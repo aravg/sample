@@ -1,0 +1,27 @@
+{
+  "execution_timestamp": "2026-05-18 14:34:48",
+  "user_query": "Give me quote from sun tzu",
+  "selected_agents": [
+    "quote"
+  ],
+  "agent_results": {
+    "quote": {
+      "status": "success",
+      "agent": "quote",
+      "raw_data": [
+        {
+          "q": "Thinking is difficult, that's why most people judge.",
+          "a": "Carl Jung",
+          "h": "<blockquote>&ldquo;Thinking is difficult, that's why most people judge.&rdquo; &mdash; <footer>Carl Jung</footer></blockquote>"
+        }
+      ],
+      "processed": {
+        "quote": "Thinking is difficult, that's why most people judge.",
+        "author": "Carl Jung",
+        "tags": [],
+        "source": "zenquotes.io"
+      }
+    }
+  },
+  "final_response": "It seems there was a mix-up, as I found a quote by Carl Jung instead of Sun Tzu. A well-known quote from Sun Tzu is, \"The greatest victory is that which requires no battle.\" If you're looking for more insights or specific themes from his work, feel free to ask!"
+}

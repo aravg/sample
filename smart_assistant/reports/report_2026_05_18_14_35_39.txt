@@ -1,0 +1,31 @@
+======================================================================
+  SMART PERSONAL ASSISTANT — EXECUTION REPORT
+======================================================================
+Execution Date & Time : 2026-05-18 14:35:39
+User Query            : python main.py
+Selected Agents       : None (general response)
+
+----------------------------------------------------------------------
+AGENT RESPONSES & API OUTPUTS
+----------------------------------------------------------------------
+
+----------------------------------------------------------------------
+FINAL COMBINED RESPONSE
+----------------------------------------------------------------------
+To run a Python script named `main.py`, open your command line interface (CLI) and navigate to the directory where the file is located. Then, execute the following command:
+
+```bash
+python main.py
+```
+
+If you are using Python 3 and have both Python 2 and Python 3 installed, you may need to use:
+
+```bash
+python3 main.py
+```
+
+Ensure that Python is properly installed and added to your system's PATH.
+
+======================================================================
+END OF REPORT
+======================================================================

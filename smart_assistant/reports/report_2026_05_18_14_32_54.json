@@ -1,0 +1,37 @@
+{
+  "execution_timestamp": "2026-05-18 14:32:54",
+  "user_query": "Give me a joke that make an indian laugh",
+  "selected_agents": [
+    "joke"
+  ],
+  "agent_results": {
+    "joke": {
+      "status": "success",
+      "agent": "joke",
+      "raw_data": {
+        "error": false,
+        "category": "Pun",
+        "type": "twopart",
+        "setup": "The other day my wife asked me to pass her lipstick, but I accidentally gave her a glue stick.",
+        "delivery": "She still isn't talking to me.",
+        "flags": {
+          "nsfw": false,
+          "religious": false,
+          "political": false,
+          "racist": false,
+          "sexist": false,
+          "explicit": false
+        },
+        "safe": true,
+        "id": 283,
+        "lang": "en"
+      },
+      "processed": {
+        "category": "Pun",
+        "type": "twopart",
+        "joke": "The other day my wife asked me to pass her lipstick, but I accidentally gave her a glue stick.\n\u2014 She still isn't talking to me."
+      }
+    }
+  },
+  "final_response": "Here's a light-hearted joke for you: \n\n\"The other day, my wife asked me to pass her lipstick, but I accidentally gave her a glue stick. She still isn't talking to me!\" \n\nI hope that brings a smile!"
+}
