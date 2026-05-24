@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Trip Planner — System Workflow</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--glass:rgba(255,255,255,0.035);--border:rgba(255,255,255,0.09);
+  --text:#e2e8f0;--muted:#64748b;
+}
+html{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;color:var(--text)}
+body{min-height:100vh;overflow-x:auto}
+.page{max-width:1280px;margin:0 auto;padding:36px 24px 100px}
+
+/* ── Header ── */
+.hdr{text-align:center;margin-bottom:28px}
+.hdr h1{font-size:1.85rem;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa,#34d399);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+.hdr p{color:var(--muted);font-size:.87rem}
+.badges{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:10px}
+.badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.09);border-radius:20px;padding:3px 11px;font-size:.71rem;color:var(--muted)}
+
+/* ── Legend ── */
+.legend{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:32px}
+.li{display:flex;align-items:center;gap:5px;font-size:.71rem;color:var(--muted)}
+.ld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+/* ── Diagram ── */
+.diagram{position:relative;width:100%;height:2500px}
+.svg-ov{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+
+/* ── Phase labels ── */
+.phase{position:absolute;display:flex;align-items:center;gap:8px;
+  font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--muted);opacity:.7;white-space:nowrap}
+.phase::after{content:'';display:block;width:32px;height:1px;background:currentColor;opacity:.4}
+
+/* ── Nodes ── */
+.node{position:absolute;display:flex;flex-direction:column;gap:4px;
+  background:var(--glass);border:1px solid var(--border);border-radius:12px;
+  padding:12px 14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:transform .25s,box-shadow .25s,border-color .25s;cursor:default;z-index:1}
+.node:hover{transform:translateY(-2px);z-index:9999}
+.nt{font-size:.79rem;font-weight:600;display:flex;align-items:center;gap:6px;line-height:1.3}
+.ns{font-size:.67rem;color:var(--muted);line-height:1.45;margin-top:1px}
+.nb{display:inline-flex;align-items:center;gap:3px;font-size:.61rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px;padding:2px 6px;border-radius:4px;margin-top:3px;width:fit-content}
+
+/* Color variants */
+.n-frontend{border-color:rgba(59,130,246,.35)}.n-frontend .nt{color:#60a5fa}
+.n-frontend:hover{border-color:rgba(59,130,246,.65);box-shadow:0 6px 28px rgba(59,130,246,.12)}
+.n-safety{border-color:rgba(239,68,68,.4)}.n-safety .nt{color:#f87171}
+.n-safety:hover{border-color:rgba(239,68,68,.7);box-shadow:0 6px 28px rgba(239,68,68,.14)}
+.n-blocked{border-color:rgba(220,38,38,.45);background:rgba(220,38,38,.06)}.n-blocked .nt{color:#fca5a5}
+.n-orch{border-color:rgba(168,85,247,.45)}.n-orch .nt{color:#c084fc}
+.n-orch:hover{border-color:rgba(168,85,247,.8);box-shadow:0 6px 28px rgba(168,85,247,.18)}
+.n-agent{border-color:rgba(6,182,212,.35)}.n-agent .nt{color:#22d3ee}
+.n-agent:hover{border-color:rgba(6,182,212,.65);box-shadow:0 6px 28px rgba(6,182,212,.12)}
+.n-data{border-color:rgba(245,158,11,.35)}.n-data .nt{color:#fbbf24}
+.n-data:hover{border-color:rgba(245,158,11,.65);box-shadow:0 6px 28px rgba(245,158,11,.1)}
+.n-analysis{border-color:rgba(16,185,129,.35)}.n-analysis .nt{color:#34d399}
+.n-analysis:hover{border-color:rgba(16,185,129,.65);box-shadow:0 6px 28px rgba(16,185,129,.1)}
+.n-mem{border-color:rgba(71,85,105,.5)}.n-mem .nt{color:#94a3b8}
+.n-output{border-color:rgba(34,197,94,.4)}.n-output .nt{color:#4ade80}
+.n-output:hover{border-color:rgba(34,197,94,.7);box-shadow:0 6px 28px rgba(34,197,94,.1)}
+.n-eval{border-color:rgba(139,92,246,.4)}.n-eval .nt{color:#a78bfa}
+.n-eval:hover{border-color:rgba(139,92,246,.7);box-shadow:0 6px 28px rgba(139,92,246,.1)}
+.n-decision{border-color:rgba(249,115,22,.45);background:rgba(249,115,22,.04)}.n-decision .nt{color:#fb923c}
+.n-terminal{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.04)}.n-terminal .nt{color:#4ade80}
+
+/* Badge fills */
+.b-llm{background:rgba(168,85,247,.14);color:#c084fc}
+.b-tool{background:rgba(245,158,11,.13);color:#fbbf24}
+.b-rule{background:rgba(6,182,212,.13);color:#22d3ee}
+.b-new{background:rgba(34,197,94,.12);color:#4ade80}
+.b-retry{background:rgba(239,68,68,.12);color:#f87171}
+.b-mem{background:rgba(71,85,105,.18);color:#94a3b8}
+.b-eval{background:rgba(139,92,246,.14);color:#a78bfa}
+
+/* ── Parallel group ── */
+.par-group{position:absolute;border:1px dashed rgba(245,158,11,.3);
+  border-radius:14px;background:rgba(245,158,11,.025)}
+.par-lbl{position:absolute;top:-10px;left:16px;font-size:.61rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;color:#f59e0b;background:var(--bg);padding:0 6px;white-space:nowrap}
+
+/* ── Result tabs ── */
+.tabs-row{position:absolute;display:flex;flex-wrap:wrap;gap:6px}
+.tab{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.09);border-radius:8px;padding:6px 11px;
+  font-size:.71rem;color:var(--muted);transition:all .2s;cursor:default}
+.tab:hover{border-color:rgba(96,165,250,.4);color:#93c5fd;background:rgba(96,165,250,.05)}
+
+/* ── State label ── */
+.state-lbl{position:absolute;font-size:.62rem;color:var(--muted);
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  border-radius:5px;padding:2px 8px}
+
+/* ── Tooltip ── */
+.tip{display:none;position:absolute;z-index:10000;background:rgba(10,14,26,.97);
+  border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 13px;
+  max-width:240px;font-size:.69rem;color:var(--text);line-height:1.55;
+  box-shadow:0 8px 30px rgba(0,0,0,.7);pointer-events:none;
+  top:0;left:calc(100% + 10px);transform:none;white-space:normal}
+.node:hover .tip{display:block}
+
+/* ── Animated arrows ── */
+@keyframes dash{to{stroke-dashoffset:-20}}
+.flow{stroke-dasharray:7 4;animation:dash 1.4s linear infinite}
+.flow-slow{stroke-dasharray:7 4;animation:dash 2s linear infinite}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hdr">
+  <h1>🗺️ AI Trip Planner — Complete System Workflow</h1>
+  <p>LangGraph Multi-Agent Architecture · Guardrails · RAGAS · DeepEval · Streamlit</p>
+  <div class="badges">
+    <span class="badge">⚡ 9 Specialized Agents</span>
+    <span class="badge">🧠 Claude (Anthropic) LLM</span>
+    <span class="badge">🔗 LangGraph State Machine</span>
+    <span class="badge">🛡️ Input &amp; Output Guardrails</span>
+    <span class="badge">📊 RAGAS + DeepEval Metrics</span>
+    <span class="badge">📄 ReportLab PDF · INR Currency</span>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="li"><div class="ld" style="background:#3b82f6"></div>Frontend / UI</div>
+  <div class="li"><div class="ld" style="background:#ef4444"></div>Safety / Guardrails</div>
+  <div class="li"><div class="ld" style="background:#a855f7"></div>Orchestrator</div>
+  <div class="li"><div class="ld" style="background:#06b6d4"></div>Core Agents</div>
+  <div class="li"><div class="ld" style="background:#f59e0b"></div>Data Agents (Parallel)</div>
+  <div class="li"><div class="ld" style="background:#10b981"></div>Analysis Agents</div>
+  <div class="li"><div class="ld" style="background:#8b5cf6"></div>Evaluation</div>
+  <div class="li"><div class="ld" style="background:#22c55e"></div>Output</div>
+  <div class="li"><div class="ld" style="background:#475569"></div>Memory</div>
+</div>
+
+<!-- ═══════════ DIAGRAM ═══════════ -->
+<div class="diagram" id="diagram">
+<svg class="svg-ov" id="svgov" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="a"  markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="rgba(148,163,184,.55)"/></marker>
+  <marker id="ab" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="#60a5fa"/></marker>
+  <marker id="ar" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="#ef4444"/></marker>
+  <marker id="ap" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="#a855f7"/></marker>
+  <marker id="ag" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="#22c55e"/></marker>
+  <marker id="ao" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="#f97316"/></marker>
+  <marker id="ac" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="#06b6d4"/></marker>
+  <marker id="ae" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="#10b981"/></marker>
+</defs>
+</svg>
+
+<!-- ═══ PHASE LABELS ═══
+     Phases 1 & 2 → left:0 (no left-branch conflict at those y-ranges)
+     Phases 3 & 4 → left:370px (clear of the left-branch blocked nodes at left:40px)
+     Phases 5–9   → left:0 (left branch has ended by then)
+-->
+<div class="phase" style="top:50px;  left:0">Phase 1 · User Interface</div>
+<div class="phase" style="top:210px; left:0">Phase 2 · Pre-flight Validation</div>
+<div class="phase" style="top:368px; left:648px">Phase 3 · Orchestration Hub</div>
+<div class="phase" style="top:538px; left:370px">Phase 4 · Input Processing</div>
+<div class="phase" style="top:808px; left:0">Phase 5 · Parallel Data Collection</div>
+<div class="phase" style="top:1058px;left:0">Phase 6 · Budget &amp; Planning</div>
+<div class="phase" style="top:1348px;left:0">Phase 7 · Review &amp; Retry</div>
+<div class="phase" style="top:1648px;left:0">Phase 8 · Memory &amp; Output</div>
+<div class="phase" style="top:1968px;left:0">Phase 8b · Safety &amp; Evaluation</div>
+<div class="phase" style="top:2210px;left:0">Phase 9 · Results Display</div>
+
+<div class="state-lbl" style="right:8px;top:388px">TripState flows through all nodes</div>
+
+<!-- ════ 1. Streamlit UI ════ -->
+<!-- top:70  bottom≈185 -->
+<div class="node n-frontend" id="n-ui" style="left:440px;top:70px;width:300px">
+  <div class="nt">🖥️ Streamlit Web Application</div>
+  <div class="ns">User fills trip planning form: source city, destination, days, travelers, total budget (₹), travel type, food preferences, interests. Clicks "Generate My Trip Plan".</div>
+  <div class="nb b-tool">Streamlit · Dark Glassmorphism UI</div>
+  <div class="tip">8 UI Tabs after results: Overview · Hotels · Transport · Itinerary · Budget · Places · PDF · Observability.<br>Custom CSS targets data-baseweb selectors for dark input widgets.</div>
+</div>
+
+<!-- ════ 2. Input Guardrails ════ -->
+<!-- top:228  bottom≈328 -->
+<div class="node n-safety" id="n-guard-in" style="left:440px;top:228px;width:300px">
+  <div class="nt">🛡️ Pre-flight Content Guard</div>
+  <div class="ns">InputGuardrails.validate_form_data() scans all text fields against 12 policy categories using compiled regex named-group patterns. Instant — no LLM call.</div>
+  <div class="nb b-rule">Regex · Instant · No LLM call</div>
+  <div class="tip">Categories: Violence/Threat · Weapons · Illegal Activity · Controlled Substances · Fraud/Scam · Terrorism · Hate Speech · Profanity · Abusive Language · Explicit Content · Self-Harm · Spam<br><br>Scans: query, source, destination, user_name, food_preferences, interests, travel_type</div>
+</div>
+
+<!-- ════ BLOCKED PATH — left column ════ -->
+<!-- n-blocked:     top:388  bottom≈483 -->
+<!-- n-obs-blocked: top:528  bottom≈618 -->
+<div class="node n-blocked" id="n-blocked" style="left:40px;top:388px;width:242px">
+  <div class="nt">🚫 Content Violation Detected</div>
+  <div class="ns">Workflow is blocked. Red dialog displayed. All result sections blurred with lock overlay. No PDF, no plan generated.</div>
+  <div class="nb b-retry">passed = False · Workflow Halted</div>
+</div>
+
+<div class="node n-safety" id="n-obs-blocked" style="left:40px;top:528px;width:242px">
+  <div class="nt">🔍 Observability (Blocked View)</div>
+  <div class="ns">Shows each flagged term with its violation category tag and remediation tip. Only visible section — all others blurred.</div>
+  <div class="nb b-rule">Flagged words · Category · Fix hint</div>
+</div>
+
+<!-- ════ 3. Orchestrator ════ -->
+<!-- top:388  bottom≈495 -->
+<div class="node n-orch" id="n-orch" style="left:440px;top:388px;width:300px">
+  <div class="nt">🧠 Orchestrator Agent</div>
+  <div class="ns">LLM-powered routing hub. Reads TripState, decides next agent. Validates decisions, prevents loops, enforces max 3 retries per agent. Falls back to rule-based logic if LLM fails.</div>
+  <div class="nb b-llm">Claude API · JSON routing · State-aware</div>
+  <div class="tip">Routes: user_input → memory_retrieval → gather_data → budget → itinerary → review → memory_update → pdf_generator → end<br><br>Decision schema: {next_step, reason, conflicts[], retry_agent}</div>
+</div>
+
+<!-- ════ 4. User Input Agent ════ -->
+<!-- top:554  bottom≈655 -->
+<div class="node n-agent" id="n-userinput" style="left:440px;top:554px;width:300px">
+  <div class="nt">📋 User Input Agent</div>
+  <div class="ns">LLM extracts structured trip preferences from natural language query. Applies InputGuardrails.sanitize() then validate(). Stores result in guardrail_results["input"].</div>
+  <div class="nb b-llm">Claude · JSON extraction · Fallback parser</div>
+  <div class="tip">Outputs trip_preferences: {source, destination, days, travelers, budget, travel_type, hotel_preference, food_preferences, transport_preference, interests, dates{start,end,display}, luxury_level}</div>
+</div>
+
+<!-- ════ 5. Memory Retrieval ════ -->
+<!-- top:700  bottom≈782 -->
+<div class="node n-mem" id="n-memret" style="left:440px;top:700px;width:300px">
+  <div class="nt">🗄️ Memory Retrieval Agent</div>
+  <div class="ns">Queries FAISS vector store for past trips and user preferences. Personalises plan based on travel history.</div>
+  <div class="nb b-mem">FAISS · Vector similarity · data/vector_store/</div>
+  <div class="tip">Reads data/vector_store/{user_id}/documents.json. Populates: past_trips[] and user_preferences_memory{} in TripState.</div>
+</div>
+
+<!-- ════ 6. Parallel gather_data group ════ -->
+<!-- top:840  bottom≈1028  (height=188) -->
+<div class="par-group" id="pargroup" style="left:148px;top:840px;width:874px;height:188px">
+  <div class="par-lbl">⚡ gather_data — sequential: Weather → Transport → Hotels → Places</div>
+
+  <div class="node n-data" id="n-weather" style="left:16px;top:46px;width:190px">
+    <div class="nt">🌤️ Weather Agent</div>
+    <div class="ns">Forecast, seasonal advice, packing tips for destination dates</div>
+    <div class="nb b-tool">OpenWeather API</div>
+    <div class="tip">Outputs weather_data: {forecast, temperature, conditions, seasonal_tips, packing_list, weather_alerts, summary}</div>
+  </div>
+
+  <div class="node n-data" id="n-transport" style="left:226px;top:46px;width:190px">
+    <div class="nt">✈️ Transport Agent</div>
+    <div class="ns">Flights &amp; trains inter-city. Metro / bus / rail for same-city trips.</div>
+    <div class="nb b-tool">Smart city detection</div>
+    <div class="tip">is_same_city() normalises names &amp; aliases. Same city → search_local_transport() for 7 cities. Different city → flights + trains.</div>
+  </div>
+
+  <div class="node n-data" id="n-hotel" style="left:436px;top:46px;width:190px">
+    <div class="nt">🏨 Hotel Agent</div>
+    <div class="ns">Finds &amp; ranks hotels by budget tier, rating, proximity to attractions</div>
+    <div class="nb b-tool">Hotel search tools</div>
+    <div class="tip">Outputs hotel_data: {recommendations[], best_pick{name, price_per_night, rating, location}, price_range, filters_applied}</div>
+  </div>
+
+  <div class="node n-data" id="n-places" style="left:646px;top:46px;width:190px">
+    <div class="nt">📍 Places Agent</div>
+    <div class="ns">Attractions, restaurants, activities filtered by user interests</div>
+    <div class="nb b-tool">Places / search API</div>
+    <div class="tip">Outputs places_data: {attractions[], restaurants[], activities[], hidden_gems[], categorised by interest tags}</div>
+  </div>
+</div>
+
+<!-- ════ 7. Budget Agent ════ -->
+<!-- top:1080  bottom≈1178 -->
+<div class="node n-analysis" id="n-budget" style="left:440px;top:1080px;width:300px">
+  <div class="nt">💰 Budget Agent</div>
+  <div class="ns">Calculates INR breakdown: hotels, transport, food, activities, misc. Hard cap: if total exceeds budget, all categories are proportionally scaled down.</div>
+  <div class="nb b-rule">INR · Hard cap · Proportional scaling</div>
+  <div class="tip">Hard cap: estimated_total &gt; budget → scale = budget/total → applied to all categories.<br><br>Outputs budget_summary: {total_inr, breakdown{hotels,transport,food,activities,misc}, forced_within_budget, per_person_cost}</div>
+</div>
+
+<!-- ════ 8. Itinerary Agent ════ -->
+<!-- top:1230  bottom≈1330 -->
+<div class="node n-analysis" id="n-itinerary" style="left:440px;top:1230px;width:300px">
+  <div class="nt">📅 Itinerary Agent</div>
+  <div class="ns">Generates day-by-day plan: activities, timings, restaurant picks, travel notes, daily budgets. Uses weather, places, and transport data.</div>
+  <div class="nb b-llm">Claude · Day-wise planning</div>
+  <div class="tip">Outputs itinerary: {days[{day_number, date, theme, morning, afternoon, evening, dinner, notes, activities[], daily_budget_inr}], highlights[], total_days}</div>
+</div>
+
+<!-- ════ 9. Review Agent ════ -->
+<!-- top:1368  bottom≈1465 -->
+<div class="node n-agent" id="n-review" style="left:440px;top:1368px;width:300px">
+  <div class="nt">🔎 Review Agent</div>
+  <div class="ns">Validates: budget compliance, itinerary completeness (all days covered), hotel fit, weather suitability, transport feasibility.</div>
+  <div class="nb b-llm">Claude · Conflict detection · Rule fallback</div>
+  <div class="tip">Returns review_status: {approved, issues[], conflicts[], retry_agent (hotel|budget|itinerary|transport), review_notes, confidence_score 0-100}<br><br>Auto-approves after 3 retries.</div>
+</div>
+
+<!-- ════ RETRY box — right side ════ -->
+<!-- top:1390  bottom≈1478 — spans review/decision range -->
+<div class="node n-blocked" id="n-retry" style="left:812px;top:1390px;width:218px">
+  <div class="nt">🔄 Retry Failed Agent</div>
+  <div class="ns">Re-runs: budget · itinerary · hotel · transport. Orchestrator routes back to review after retry.</div>
+  <div class="nb b-retry">max 3× · retry_counts tracked</div>
+  <div class="tip">retry_counts stored per agent in TripState. After retry, routes back to review_node for re-evaluation. After 3 retries the review auto-approves with a note.</div>
+</div>
+
+<!-- ════ 10. Decision Gate ════ -->
+<!-- top:1520  bottom≈1606 -->
+<div class="node n-decision" id="n-decision" style="left:440px;top:1520px;width:300px">
+  <div class="nt">⚖️ Approval Decision Gate</div>
+  <div class="ns">Approved → Memory Update. Issues found → retry the failing agent (max 3× per agent). Max retries reached → auto-approve.</div>
+  <div class="nb" style="background:rgba(249,115,22,.12);color:#fb923c">Conditional routing · retry_counts ≤ 3</div>
+</div>
+
+<!-- ════ 11. Memory Update ════ -->
+<!-- top:1668  bottom≈1750 -->
+<div class="node n-mem" id="n-memupd" style="left:440px;top:1668px;width:300px">
+  <div class="nt">💾 Memory Update Agent</div>
+  <div class="ns">Persists this trip's preferences and outcomes into the FAISS vector store for future personalisation of the same user.</div>
+  <div class="nb b-mem">FAISS · Persistent · Per-user</div>
+</div>
+
+<!-- ════ 12. PDF Generator ════ -->
+<!-- top:1810  bottom≈1910 -->
+<div class="node n-output" id="n-pdf" style="left:440px;top:1810px;width:300px">
+  <div class="nt">📄 PDF Generator Agent</div>
+  <div class="ns">Generates A4 travel report in INR. Runs Output Guardrails + RAGAS + DeepEval before generating. Saves to output/TripPlan_{dest}_{timestamp}.pdf.</div>
+  <div class="nb b-new">ReportLab · All costs in ₹ · A4</div>
+  <div class="tip">PDF sections: header banner, trip summary, weather, hotels, transport, day-wise itinerary, full budget breakdown — all in ₹.<br><br>Path stored in TripState.pdf_path.</div>
+</div>
+
+<!-- ════ 13. Output Guardrails ════ -->
+<!-- top:1988  bottom≈2090 -->
+<div class="node n-safety" id="n-guard-out" style="left:78px;top:1988px;width:218px">
+  <div class="nt">🛡️ Output Guardrails</div>
+  <div class="ns">5 checks: budget compliance (≤105%), itinerary completeness, hotel availability, transport availability, content quality (empty days).</div>
+  <div class="nb b-rule">OutputGuardrails.validate()</div>
+  <div class="tip">Stores result in guardrail_results["output"]. Budget check: estimated_cost ≤ total_budget × 1.05. Completeness: itinerary_days ≥ requested_days.</div>
+</div>
+
+<!-- ════ 14. RAGAS ════ -->
+<!-- top:1988  bottom≈2080 -->
+<div class="node n-eval" id="n-ragas" style="left:325px;top:1988px;width:212px">
+  <div class="nt">📊 RAGAS Evaluation</div>
+  <div class="ns">Faithfulness · Answer Relevance · Context Precision · Context Recall · Overall RAGAS Score</div>
+  <div class="nb b-eval">Heuristic · No LLM call</div>
+  <div class="tip">Heuristic scoring: data richness, destination relevance, preference coverage, context utilisation. Scores 0.0–1.0 per metric.</div>
+</div>
+
+<!-- ════ 15. DeepEval ════ -->
+<!-- top:1988  bottom≈2080 -->
+<div class="node n-eval" id="n-deepeval" style="left:562px;top:1988px;width:212px">
+  <div class="nt">🧪 DeepEval Metrics</div>
+  <div class="ns">Coherence · Correctness · Hallucination Score · Toxicity · Bias · Overall DeepEval Score</div>
+  <div class="nb b-eval">Heuristic · Grade: Excellent–Poor</div>
+  <div class="tip">Grade derived from RAGAS + DeepEval: Excellent (≥0.85) · Good (≥0.70) · Fair (≥0.55) · Poor (&lt;0.55). Stored in evaluation_results.</div>
+</div>
+
+<!-- ════ END ════ -->
+<!-- top:2148  bottom≈2215 -->
+<div class="node n-terminal" id="n-end" style="left:490px;top:2148px;width:200px;text-align:center;align-items:center">
+  <div class="nt">✅ Workflow Complete</div>
+  <div class="ns" style="text-align:center">TripState fully populated. Results streamed back to Streamlit frontend.</div>
+</div>
+
+<!-- ════ Result Tabs ════ -->
+<div class="tabs-row" style="left:112px;top:2278px;width:1020px">
+  <div class="tab">🌍 Overview</div>
+  <div class="tab">🏨 Hotels</div>
+  <div class="tab">✈️ Transport</div>
+  <div class="tab">📅 Itinerary</div>
+  <div class="tab">💰 Budget</div>
+  <div class="tab">📍 Places &amp; Activities</div>
+  <div class="tab">📄 Download PDF</div>
+  <div class="tab">🔍 Observability</div>
+</div>
+
+<!-- ════ Observability detail ════ -->
+<div class="node n-eval" style="left:112px;top:2358px;width:970px;flex-direction:row;flex-wrap:wrap;gap:16px;padding:14px 18px">
+  <div style="flex:1;min-width:180px">
+    <div class="nt" style="font-size:.74rem">🛡️ Guardrail Results</div>
+    <div class="ns">Input &amp; output check cards with pass/fail/warn per check, flagged inputs listed</div>
+  </div>
+  <div style="flex:1;min-width:180px">
+    <div class="nt" style="font-size:.74rem">📊 RAGAS Gauges</div>
+    <div class="ns">4 metric gauges: Faithfulness, Answer Relevance, Context Precision, Context Recall</div>
+  </div>
+  <div style="flex:1;min-width:180px">
+    <div class="nt" style="font-size:.74rem">🧪 DeepEval Gauges</div>
+    <div class="ns">5 gauges: Coherence, Correctness, Hallucination Risk, Toxicity, Bias</div>
+  </div>
+  <div style="flex:1;min-width:180px">
+    <div class="nt" style="font-size:.74rem">🪵 Pipeline Trace</div>
+    <div class="ns">Agent log with retry counts, errors, current_step history, timestamps</div>
+  </div>
+</div>
+
+</div><!-- /diagram -->
+</div><!-- /page -->
+
+<script>
+function draw() {
+  const svg = document.getElementById('svgov');
+  const dg  = document.getElementById('diagram');
+  [...svg.children].forEach(c => { if (c.tagName !== 'defs') c.remove(); });
+
+  const DR = dg.getBoundingClientRect();
+
+  function p(id) {
+    const el = document.getElementById(id) || document.querySelector(id);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const x = r.left - DR.left, y = r.top - DR.top;
+    return { cx:x+r.width/2, cy:y+r.height/2,
+             top:y, bot:y+r.height, left:x, right:x+r.width, w:r.width, h:r.height };
+  }
+
+  function mkpath(d, stroke, cls, marker) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg','path');
+    el.setAttribute('d',d); el.setAttribute('fill','none');
+    el.setAttribute('stroke',stroke); el.setAttribute('stroke-width','1.6');
+    if (cls)    el.setAttribute('class',cls);
+    if (marker) el.setAttribute('marker-end','url(#'+marker+')');
+    svg.appendChild(el);
+  }
+
+  function mktxt(x, y, label, fill, anchor) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg','text');
+    el.setAttribute('x',x); el.setAttribute('y',y);
+    el.setAttribute('text-anchor', anchor||'middle');
+    el.setAttribute('fill', fill||'rgba(148,163,184,.75)');
+    el.setAttribute('font-size','11');
+    el.setAttribute('font-family','Segoe UI,system-ui,sans-serif');
+    el.textContent = label;
+    svg.appendChild(el);
+  }
+
+  /* Straight vertical connector with optional label */
+  function vline(fromId, toId, stroke, cls, marker, label) {
+    const f=p(fromId), t=p(toId); if(!f||!t) return;
+    const x=f.cx, y1=f.bot+2, y2=t.top-2, my=(y1+y2)/2;
+    mkpath(`M${x} ${y1} L${x} ${y2}`, stroke, cls, marker);
+    if (label) mktxt(x+22, my, label, stroke);
+  }
+
+  /* Curved connector between two points */
+  function curve(x1,y1, x2,y2, stroke, cls, marker) {
+    const cp1x=x1, cp1y=(y1+y2)/2, cp2x=x2, cp2y=(y1+y2)/2;
+    mkpath(`M${x1} ${y1} C${cp1x} ${cp1y} ${cp2x} ${cp2y} ${x2} ${y2}`, stroke, cls, marker);
+  }
+
+  /* ── 1. UI → Input Guard ── */
+  vline('n-ui','n-guard-in','#60a5fa','flow','ab');
+
+  /* ── 2a. Guard → PASS → Orch ── */
+  vline('n-guard-in','n-orch','#22c55e','flow','ag','PASS');
+
+  /* ── 2b. Guard → BLOCKED (curve left) ── */
+  { const g=p('n-guard-in'), b=p('n-blocked'); if(g&&b) {
+    mkpath(`M${g.left+40} ${g.bot} C${g.left+40} ${g.bot+40} ${b.right+30} ${b.cy} ${b.right} ${b.cy}`,
+      '#ef4444','flow','ar');
+    mktxt(g.left-10, g.bot+30, 'BLOCKED', '#f87171','start');
+  }}
+
+  /* ── 2c. Blocked → Observability ── */
+  vline('n-blocked','n-obs-blocked','#ef4444','flow','ar');
+
+  /* ── 3. Orch → User Input ── */
+  vline('n-orch','n-userinput','#a855f7','flow','ap');
+
+  /* ── 4. User Input → Memory ── */
+  vline('n-userinput','n-memret','#06b6d4','flow','ac');
+
+  /* ── 5. Memory → parallel group ── */
+  { const m=p('n-memret'), g=p('pargroup'); if(m&&g) {
+    const gCx = g.left + g.w/2;
+    mkpath(`M${m.cx} ${m.bot+2} L${m.cx} ${(m.bot+g.top)/2} L${gCx} ${(m.bot+g.top)/2} L${gCx} ${g.top}`,
+      '#64748b','flow','a');
+  }}
+
+  /* ── 6. Parallel group → Budget ── */
+  { const g=p('pargroup'), b=p('n-budget'); if(g&&b) {
+    const gCx = g.left + g.w/2;
+    mkpath(`M${gCx} ${g.bot+2} L${b.cx} ${b.top-2}`, '#f59e0b','flow','ae');
+  }}
+
+  /* ── 7. Budget → Itinerary ── */
+  vline('n-budget','n-itinerary','#10b981','flow','ae');
+
+  /* ── 8. Itinerary → Review ── */
+  vline('n-itinerary','n-review','#06b6d4','flow','ac');
+
+  /* ── 9. Review → Decision ── */
+  vline('n-review','n-decision','#64748b','flow','a');
+
+  /* ── 10. Decision → Retry (right branch) ── */
+  { const d=p('n-decision'), r=p('n-retry'); if(d&&r) {
+    mkpath(`M${d.right+2} ${d.cy} C${d.right+60} ${d.cy} ${r.left-60} ${r.cy} ${r.left-2} ${r.cy}`,
+      '#ef4444','flow','ar');
+    mktxt(d.right+52, d.cy-10, 'Issues', '#f87171');
+  }}
+
+  /* ── 11. Retry → Review (loop back up) ── */
+  { const r=p('n-retry'), rv=p('n-review'); if(r&&rv) {
+    const x1=r.cx, y1=r.top-2, x2=rv.right+2, y2=rv.cy;
+    mkpath(`M${x1} ${y1} C${x1} ${y1-70} ${x2+80} ${y2} ${x2} ${y2}`,
+      '#f97316','flow-slow','ao');
+    mktxt(x1+46, y1-38, 'retry ≤ 3×', '#fb923c');
+  }}
+
+  /* ── 12. Decision → Memory Update (Approved) ── */
+  vline('n-decision','n-memupd','#22c55e','flow','ag','Approved');
+
+  /* ── 13. Memory Update → PDF Generator ── */
+  vline('n-memupd','n-pdf','#22c55e','flow','ag');
+
+  /* ── 14–16. PDF → eval row ── */
+  { const pdf=p('n-pdf'), go=p('n-guard-out'), ra=p('n-ragas'), de=p('n-deepeval');
+    if(pdf&&go) mkpath(`M${pdf.left+60} ${pdf.bot+2} C${pdf.left+60} ${pdf.bot+50} ${go.cx} ${go.top-30} ${go.cx} ${go.top-2}`, '#ef4444','','ar');
+    if(pdf&&ra) mkpath(`M${pdf.cx-20}  ${pdf.bot+2} C${pdf.cx-20}  ${pdf.bot+50} ${ra.cx} ${ra.top-30} ${ra.cx} ${ra.top-2}`, '#8b5cf6','','a');
+    if(pdf&&de) mkpath(`M${pdf.right-60} ${pdf.bot+2} C${pdf.right-60} ${pdf.bot+50} ${de.cx} ${de.top-30} ${de.cx} ${de.top-2}`, '#8b5cf6','','a');
+  }
+
+  /* ── 17. Eval row → END ── */
+  { const go=p('n-guard-out'), ra=p('n-ragas'), de=p('n-deepeval'), en=p('n-end');
+    if(go&&en) mkpath(`M${go.cx} ${go.bot+2} C${go.cx} ${go.bot+50} ${en.left-2} ${en.cy} ${en.left-2} ${en.cy}`, 'rgba(34,197,94,.45)','flow-slow','ag');
+    if(ra&&en) mkpath(`M${ra.cx} ${ra.bot+2} L${en.cx} ${en.top-2}`, 'rgba(34,197,94,.55)','flow','ag');
+    if(de&&en) mkpath(`M${de.cx} ${de.bot+2} C${de.cx} ${de.bot+50} ${en.right+2} ${en.cy} ${en.right+2} ${en.cy}`, 'rgba(34,197,94,.45)','flow-slow','ag');
+  }
+
+  /* ── 18. END → Tabs ── */
+  { const en=p('n-end'); const tabs=document.querySelector('.tabs-row');
+    if(en&&tabs) {
+      const tr=tabs.getBoundingClientRect(), ty=tr.top-DR.top;
+      mkpath(`M${en.cx} ${en.bot+2} L${en.cx} ${ty-2}`, 'rgba(96,165,250,.5)','flow','ab');
+    }
+  }
+
+  /* ── Subtle return arrows (agent → orch) ── */
+  ['n-userinput','n-memret'].forEach(id => {
+    const n=p(id), o=p('n-orch'); if(!n||!o) return;
+    mkpath(`M${n.right+2} ${n.cy} C${n.right+50} ${n.cy} ${o.right+50} ${o.bot-10} ${o.right+2} ${o.bot-10}`,
+      'rgba(168,85,247,.15)','','ap');
+  });
+
+  svg.setAttribute('height', dg.offsetHeight);
+}
+
+window.addEventListener('load', () => setTimeout(draw, 150));
+window.addEventListener('resize', () => setTimeout(draw, 150));
+</script>
+</body>
+</html>
